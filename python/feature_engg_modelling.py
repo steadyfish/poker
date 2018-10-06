@@ -17,7 +17,7 @@ from sklearn.ensemble import RandomForestClassifier
 from sklearn import metrics
 import sklearn_pandas as skp
 
-cdir = path.abspath("..")
+cdir = path.abspath(".")
 col_names = ["s1", "c1", "s2", "c2", "s3", "c3", "s4", "c4", "s5", "c5", "hand"]
 cat = 'category'
 num = 'int32'
@@ -65,7 +65,8 @@ def Comparator(criteria=1):
             d_r1 = d_record.groupby(d_record).count()
             d_r2 = d_r1[d_r1 == criteria]
             return(d_r2.shape[0])
-        a = d_in[['s1', 's2', 's3', 's4', 's5']].apply(get_repeats, criteria = criteria, axis = 1)
+        a = d_in.apply(get_repeats, criteria = criteria, axis = 1)
+#        a = d_in[['s1', 's2', 's3', 's4', 's5']].apply(get_repeats, criteria = criteria, axis = 1)
         return(a)
 #        return pd.DataFrame(eq.values.astype(int), columns=[result_column])
     return ppr.FunctionTransformer(
@@ -75,27 +76,31 @@ def Comparator(criteria=1):
 #        kw_args={'result_column': result_column, 'inverse': inverse}
     )
 
+# features can't be parallelly processed by different transformer in a single DataFrameMapper pipeline object
 engineered_feature_pipeline1 = skp.DataFrameMapper([
         (['s1', 's2', 's3', 's4', 's5'], Comparator(criteria = 5), {'alias': 'suit_match'}),
-        (['c1', 'c2', 'c3', 'c4', 'c5'], Comparator(criteria = 2), {'alias': 'no_pairs'}),
-        (['c1', 'c2', 'c3', 'c4', 'c5'], Comparator(criteria = 3), {'alias': 'has_triplet'}),
-        (['c1', 'c2', 'c3', 'c4', 'c5'], Comparator(criteria = 4), {'alias': 'has_quartet'})], 
+        (['c1', 'c2', 'c3', 'c4', 'c5'], Comparator(criteria = 2), {'alias': 'no_pairs'})#,
+#        (['c1', 'c2', 'c3', 'c4', 'c5'], Comparator(criteria = 3), {'alias': 'has_triplet'}),
+#        (['c1', 'c2', 'c3', 'c4', 'c5'], Comparator(criteria = 4), {'alias': 'has_quartet'})
+        ], 
     input_df=True, df_out=True, default = None)
 
-temp = d_in[d_in['hand']=='2']
+temp = d_in[d_in['hand']=='5']
 engineered_feature_pipeline1.fit_transform(temp).head()
 
 engineered_feature_pipeline2 = skp.DataFrameMapper([
         (['c1', 'c2', 'c3', 'c4', 'c5'], Comparator(criteria = 3), {'alias': 'has_triplet'})], 
-    input_df=True, df_out=True, default = None)
+    input_df=True, df_out=True, default = False)
 
 engineered_feature_pipeline3 = skp.DataFrameMapper([
         (['c1', 'c2', 'c3', 'c4', 'c5'], Comparator(criteria = 4), {'alias': 'has_quartet'})], 
-    input_df=True, df_out=True, default = None)
+    input_df=True, df_out=True, default = False)
 
-features_pipeline = make_union(engineered_feature_pipeline1, 
+# here we lose feature names
+features_pipeline = ppl.make_union(engineered_feature_pipeline1, 
                       engineered_feature_pipeline2, 
                       engineered_feature_pipeline3)
 
 temp = d_in[d_in['hand']=='2']
 features_pipeline.fit_transform(temp).head()
+a = features_pipeline.fit_transform(temp)
