@@ -60,15 +60,19 @@ d_in.groupby(['suit_match']).count()
 d_in.groupby(['hand', 'suit_match']).count()
 
 # d_record = row in the dataframe
-# criteria = 2, 3, 4
+# criteria = 2, 3, 4, 5
 def get_repeats(d_record, criteria):
     
 #    print(criteria)
     d_r1 = d_record.groupby(d_record).count()
+#    print("grouped_df")
 #    print(d_r1)
 #    print(type(d_r1))
 #    print(d_r1.shape)
     d_r2 = d_r1[d_r1 == criteria]
+#    print("filtered_df")
+#    print(d_r2)
+#    print("filtered_df_shape")
 #    print(d_r2.shape[0])
 #        return(d_r2)
     return(d_r2.shape[0])
@@ -155,5 +159,4 @@ d_test = pd.read_csv(cdir + "\data\\poker-hand-testing.data",
                      names = col_names, dtype = col_types)
 d_test.columns
 d_test.boxplot()
-
 
