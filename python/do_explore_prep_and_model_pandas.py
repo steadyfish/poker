@@ -14,7 +14,6 @@ from sklearn import metrics
 from sklearn import pipeline as ppl
 from sklearn import preprocessing as ppr
 
-
 cdir = path.abspath("..")
 col_names = ["s1", "c1", "s2", "c2", "s3", "c3", "s4", "c4", "s5", "c5", "hand"]
 cat = 'category'
@@ -25,9 +24,9 @@ col_types = {"s1": cat, "c1": num,
              "s4": cat, "c4": num, 
              "s5": cat, "c5": num, 
              "hand": cat}
-d_in = pd.read_csv(cdir + "\\data\\poker-hand-training-true.data", 
+d_in = pd.read_csv(cdir + "\\poker\\data\\poker-hand-training-true.data", 
                    names = col_names, dtype = col_types)
-d_in = pd.read_feather(cdir +  "\\data\\poker-hand-training-true.data")
+# d_in = pd.read_feather(cdir +  "\\data\\poker-hand-training-true.data")
 d_in.columns
 d_in.shape
 d_in.boxplot() # for continuous vars
@@ -62,32 +61,9 @@ d_in.groupby(['hand', 'suit_match']).count()
 # d_record = row in the dataframe
 # criteria = 2, 3, 4, 5
 def get_repeats(d_record, criteria):
-    
-#    print(criteria)
     d_r1 = d_record.groupby(d_record).count()
-#    print("grouped_df")
-#    print(d_r1)
-#    print(type(d_r1))
-#    print(d_r1.shape)
     d_r2 = d_r1[d_r1 == criteria]
-#    print("filtered_df")
-#    print(d_r2)
-#    print("filtered_df_shape")
-#    print(d_r2.shape[0])
-#        return(d_r2)
     return(d_r2.shape[0])
-
-        
-#d_in['no_pairs'] = 
-#temp = d_in[d_in['hand'] == '2'][['c1', 'c2', 'c3', 'c4', 'c5']].head().apply(lambda x: get_repeats(x, 2), axis = 1)
-#temp = d_in[d_in['hand'] == '2'][['c1', 'c2', 'c3', 'c4', 'c5']].head().apply(get_repeats, criteria = 2, axis = 1)
-#temp
-#
-#temp1 = d_in[d_in['hand'] == '3'][['c1', 'c2', 'c3', 'c4', 'c5']].head().apply(lambda x: get_repeats(x, 3), axis = 1)
-#temp1
-#
-#temp2 = d_in[d_in['hand'] == '6'][['c1', 'c2', 'c3', 'c4', 'c5']].head().apply(lambda x: get_repeats(x, 4), axis = 1)
-#temp2
 
 d_in['no_pairs'] = d_in[['c1', 'c2', 'c3', 'c4', 'c5']].apply(get_repeats, criteria = 2, axis = 1)
 d_in['has_triplet'] = d_in[['c1', 'c2', 'c3', 'c4', 'c5']].apply(get_repeats, criteria = 3, axis = 1)
@@ -96,19 +72,10 @@ d_in.columns
 d_in[['hand', 'no_pairs', 'c1']].groupby(['hand', 'no_pairs']).count()
 d_in[['hand', 'has_triplet', 'c1']].groupby(['hand', 'has_triplet']).count()
 d_in[['hand', 'has_quartet', 'c1']].groupby(['hand', 'has_quartet']).count()
-## col wise function application
-#temp = d_in.head()
-#def subtract_and_divide(x, sub, divide=1):
-#    return (x - sub) / divide
-#
-#temp.apply(subtract_and_divide, args=(2,), divide=2)
 
 def has_straight(d_record):
-#    print(d_record)
     d_record1 = d_record.copy()
     d_record1[d_record1 == 1] = 14
-#    print(d_record)
-#    print(d_record1)
     d_r1 = d_record.sort_values().diff().dropna()
     r1_all = np.all(d_r1 == 1)
     d_r2 = d_record1.sort_values().diff().dropna()
@@ -117,18 +84,12 @@ def has_straight(d_record):
         return(1)
     else:
         return(0)
-        
-#temp = d_in[d_in['hand'] == '8'][['c1', 'c2', 'c3', 'c4', 'c5']].head(20).apply(has_straight, axis = 1)
-#temp
 
 d_in['has_straight'] = d_in[['c1', 'c2', 'c3', 'c4', 'c5']].apply(has_straight, axis = 1)
 d_in[['hand', 'has_straight', 'c1']].groupby(['hand', 'has_straight']).count()
 
-d_in.to_feather(cdir + "\\data\\poker-hand-training-true-precomputed.data")
-#temp = d_in[col_names]
-#temp.to_feather(cdir +  "\\data\\poker-hand-training-true.data")
-#use pandas-sklearn or simple sklearn to build multiple models. Start with just 2 classes (0 and 1)
-d_in = pd.read_feather(cdir + "\\data\\poker-hand-training-true-precomputed.data")
+d_in.to_feather(cdir + "\\poker\\data\\poker-hand-training-true-precomputed.data")
+d_in = pd.read_feather(cdir + "\\poker\\data\\poker-hand-training-true-precomputed.data")
 d_in1 = d_in[d_in.hand.isin(['2', '3', '4', '6'])]
 d_in1 = d_in
 
@@ -138,21 +99,17 @@ X = d_in1.loc[:, 'suit_match':'has_straight'] # produces a copy
 estimators = [('clf', LogisticRegression())]
 estimators = [('clf', RandomForestClassifier())]
 pipe = ppl.Pipeline(estimators)
-#estimators = [('dummify', ppr.OneHotEncoder()), ('clf', SVC())]
-#pipe = ppl.Pipeline(estimators)
-# same as make_pipeline(ppr.OneHotEncoder(), SVC())
 pipe.fit(X = X, y = y)
 
 pipe.get_params() # model tuning parameters
 pipe.named_steps['clf'].intercept_ # for LR
 pipe.named_steps['clf'].coef_ # for LR
 pipe.named_steps['clf'].feature_importances_ #for RF
-a.
+
 y_pred = pipe.predict(X)
 y_pred_prob = pipe.predict_proba(X)
 metrics.confusion_matrix(y, y_pred)
 metrics.brier_score_loss( y, y_pred_prob[:, 0])
-
 
 # test
 d_test = pd.read_csv(cdir + "\data\\poker-hand-testing.data", 
@@ -160,3 +117,4 @@ d_test = pd.read_csv(cdir + "\data\\poker-hand-testing.data",
 d_test.columns
 d_test.boxplot()
 
+# to be able to make predictions for the test datasets, requires creating preproecssing again
