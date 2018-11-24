@@ -4,19 +4,31 @@ Created on Fri Jul 13 18:44:49 2018
 
 @author: Dhrumin
 """
-from os import path
+import os 
 import numpy as np
 import pandas as pd
 
+# train test split
+from sklearn.model_selection import train_test_split
+
+# preprocessing
+from sklearn import preprocessing as ppr
+from sklearn import pipeline as ppl
+
+# models
 from sklearn.linear_model import LogisticRegression
 from sklearn.ensemble import RandomForestClassifier
-from sklearn import metrics
-from sklearn import pipeline as ppl
-from sklearn import preprocessing as ppr
 
+# hyperparameter tuning
+from sklearn.model_selection import GridSearchCV
+
+# evaluation
+from sklearn import metrics
+
+# other utility functions (assumes current working directory is 'project/python')
 import utility_functions as uf
 
-cdir = path.abspath("..")
+cdir = os.path.abspath("")
 col_names = ["s1", "c1", "s2", "c2", "s3", "c3", "s4", "c4", "s5", "c5", "hand"]
 cat = 'category'
 num = 'int32'
@@ -26,7 +38,7 @@ col_types = {"s1": cat, "c1": num,
              "s4": cat, "c4": num, 
              "s5": cat, "c5": num, 
              "hand": cat}
-d_in = pd.read_csv(cdir + "\\poker\\data\\poker-hand-training-true.data", 
+d_in = pd.read_csv("..\\data\\poker-hand-training-true.data", 
                    names = col_names, dtype = col_types)
 # d_in = pd.read_feather(cdir +  "\\data\\poker-hand-training-true.data")
 d_in.columns
@@ -66,27 +78,35 @@ d_in['has_straight'] = d_in[['c1', 'c2', 'c3', 'c4', 'c5']].apply(uf.has_straigh
 d_in[['hand', 'has_straight', 'c1']].groupby(['hand', 'has_straight']).count()
 
 d_in.to_feather(cdir + "\\poker\\data\\poker-hand-training-true-precomputed.data")
-d_in = pd.read_feather(cdir + "\\poker\\data\\poker-hand-training-true-precomputed.data")
+#d_in = pd.read_feather(cdir + "\\poker\\data\\poker-hand-training-true-precomputed.data")
 d_in1 = d_in[d_in.hand.isin(['2', '3', '4', '6'])]
 d_in1 = d_in
 
 y = d_in1.hand
 X = d_in1.loc[:, 'suit_match':'has_straight'] # produces a copy
 
-estimators = [('clf', LogisticRegression())]
-estimators = [('clf', RandomForestClassifier())]
-pipe = ppl.Pipeline(estimators)
-pipe.fit(X = X, y = y)
+# split
+X_train, X_test, y_train, y_test = train_test_split(X, y, train_size = 0.8, stratify = y, ransom_state = 9565)
 
-pipe.get_params() # model tuning parameters
-pipe.named_steps['clf'].intercept_ # for LR
-pipe.named_steps['clf'].coef_ # for LR
-pipe.named_steps['clf'].feature_importances_ #for RF
+estimators_lr = [('clf', LogisticRegression(multi_class = 'multinomial', penalty = 'l2',
+                                         random_state = 9546, solver = "lbfgs"))]
+params_lr = dict(clf__C = [0.5, 1, 2])
+estimators_rf = [('clf', RandomForestClassifier())]
+pipe = ppl.Pipeline(estimators_lr)
+log_loss_w_lbl = metrics.make_scorer(metrics.log_loss, labels = np.unique(y_train),
+                                     greater_is_better = False, needs_proba = True)
+cv_lr = GridSearchCV(pipe, param_grid = params_lr, scoring = log_loss_w_lbl, cv = 5) 
+cv_lr.fit(X = X_train, y = y_train)
 
-y_pred = pipe.predict(X)
-y_pred_prob = pipe.predict_proba(X)
-metrics.confusion_matrix(y, y_pred)
-metrics.brier_score_loss( y, y_pred_prob[:, 0])
+cv_lr.get_params() # model tuning parameters
+cv_lr.best_estimator_.named_steps['clf'].intercept_ # for LR
+cv_lr.best_estimator_.named_steps['clf'].coef_ # for LR
+cv_lr.best_estimator_.named_steps['clf'].feature_importances_ #for RF
+
+y_tr_pred = cv_lr.predict(X_train)
+y_tr_pred_prob = cv_lr.predict_proba(X_train)
+metrics.confusion_matrix(y_train, y_tr_pred)
+metrics.brier_score_loss(y_train, y_tr_pred_prob[:, 0])
 
 # test
 d_test = pd.read_csv(cdir + "\data\\poker-hand-testing.data", 
@@ -94,4 +114,4 @@ d_test = pd.read_csv(cdir + "\data\\poker-hand-testing.data",
 d_test.columns
 d_test.boxplot()
 
-# to be able to make predictions for the test datasets, requires creating preproecssing again
+# to be able to make predictions for the test dataset, we would need to manually prerpocess it as well
